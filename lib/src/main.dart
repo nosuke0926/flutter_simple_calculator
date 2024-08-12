@@ -49,19 +49,32 @@ class CalculatorThemeData {
   /// The text style to use for number buttons.
   final TextStyle? numStyle;
 
-  const CalculatorThemeData(
-      {this.displayColor,
-      this.borderWidth = 1.0,
-      this.expressionColor,
-      this.borderColor,
-      this.operatorColor,
-      this.commandColor,
-      this.numColor,
-      this.displayStyle,
-      this.expressionStyle,
-      this.operatorStyle,
-      this.commandStyle,
-      this.numStyle});
+  final String doneText;
+
+  final Icon? backspaceIcon;
+
+  final double? buttonBorderRadius;
+
+  final double? buttonSpacing;
+
+  const CalculatorThemeData({
+    this.displayColor,
+    this.borderWidth = 1.0,
+    this.expressionColor,
+    this.borderColor,
+    this.operatorColor,
+    this.commandColor,
+    this.numColor,
+    this.displayStyle,
+    this.expressionStyle,
+    this.operatorStyle,
+    this.commandStyle,
+    this.numStyle,
+    this.doneText = 'Done',
+    this.backspaceIcon,
+    this.buttonBorderRadius = 0,
+    this.buttonSpacing = 0,
+  });
 }
 
 /// SimpleCalculator
@@ -393,10 +406,10 @@ class SimpleCalculatorState extends State<SimpleCalculator> {
     return GridButton(
       textStyle: _baseStyle.copyWith(
           color: Theme.of(context).textTheme.labelLarge?.color),
-      borderColor: widget.theme?.borderColor ?? Theme.of(context).dividerColor,
+      borderColor: Colors.transparent,
       textDirection: TextDirection.ltr,
-      hideSurroundingBorder: widget.hideSurroundingBorder,
-      borderWidth: widget.theme?.borderWidth ?? 0,
+      hideSurroundingBorder: false,
+      borderWidth: widget.theme?.buttonSpacing ?? 0,
       onPressed: (dynamic val) {
         _focusNode.requestFocus();
         switch (val) {
@@ -427,6 +440,9 @@ class SimpleCalculatorState extends State<SimpleCalculator> {
           case 'C':
             _controller.clear();
             break;
+          case 'done':
+            Navigator.of(context).pop();
+            break;
           default:
             if (val == _controller.numberFormat.symbols.DECIMAL_SEP) {
               _controller.addPoint();
@@ -447,22 +463,25 @@ class SimpleCalculatorState extends State<SimpleCalculator> {
   }
 
   List<List<GridButtonItem>> _getItems() {
+    final backspaceIcon = widget.theme?.backspaceIcon ?? '→';
+    final doneText = widget.theme?.doneText ?? 'Done';
     return [
-      [_acLabel, '→', _controller.numberFormat.symbols.PERCENT, '÷'],
-      [_nums[7], _nums[8], _nums[9], '×'],
-      [_nums[4], _nums[5], _nums[6], '-'],
-      [_nums[1], _nums[2], _nums[3], '+'],
-      [_nums[0], _controller.numberFormat.symbols.DECIMAL_SEP, '±', '='],
+      ['+', '-', '×', '÷'],
+      [_nums[7], _nums[8], _nums[9], _acLabel],
+      [_nums[4], _nums[5], _nums[6], backspaceIcon],
+      [_nums[1], _nums[2], _nums[3], '='],
+      [
+        _nums[0],
+        // _nums[0],
+        _controller.numberFormat.symbols.DECIMAL_SEP,
+        doneText,
+      ],
     ].map((items) {
       return items.map((title) {
         Color color =
             widget.theme?.numColor ?? Theme.of(context).scaffoldBackgroundColor;
         TextStyle? style = widget.theme?.numStyle;
-        if (title == '=' ||
-            title == '+' ||
-            title == '-' ||
-            title == '×' ||
-            title == '÷') {
+        if (title == '+' || title == '-' || title == '×' || title == '÷') {
           color = widget.theme?.operatorColor ?? Theme.of(context).primaryColor;
           style = widget.theme?.operatorStyle ??
               _baseStyle.copyWith(
@@ -470,16 +489,50 @@ class SimpleCalculatorState extends State<SimpleCalculator> {
         }
         if (title == _controller.numberFormat.symbols.PERCENT ||
             title == '→' ||
+            title == '=' ||
+            (title is Icon && backspaceIcon is Icon) ||
             title == 'C' ||
-            title == 'AC') {
+            title == 'AC' ||
+            title == doneText) {
           color = widget.theme?.commandColor ?? Theme.of(context).splashColor;
           style = widget.theme?.commandStyle;
         }
-        return GridButtonItem(
-          title: title,
-          color: color,
-          textStyle: style,
-        );
+
+        if (title is Icon && backspaceIcon is Icon) {
+          return GridButtonItem(
+            child: backspaceIcon,
+            borderRadius: widget.theme?.buttonBorderRadius ?? 0,
+            color: color,
+            textStyle: style,
+            value: '→',
+          );
+        } else if (title == doneText) {
+          return GridButtonItem(
+            child: AutoSizeText(
+              doneText,
+              maxLines: 1,
+            ),
+            borderRadius: widget.theme?.buttonBorderRadius ?? 0,
+            color: color,
+            textStyle: style,
+            value: title == doneText ? 'done' : null,
+          );
+        } else if (title == _nums[0]) {
+          return GridButtonItem(
+            borderRadius: widget.theme?.buttonBorderRadius ?? 0,
+            title: title as String?,
+            flex: 2,
+            color: color,
+            textStyle: style,
+          );
+        } else {
+          return GridButtonItem(
+            borderRadius: widget.theme?.buttonBorderRadius ?? 0,
+            title: title as String?,
+            color: color,
+            textStyle: style,
+          );
+        }
       }).toList();
     }).toList();
   }
@@ -552,7 +605,7 @@ class _CalcDisplayState extends State<_CalcDisplay> {
           top: widget.hideSurroundingBorder! ? BorderSide.none : borderSide,
           left: widget.hideSurroundingBorder! ? BorderSide.none : borderSide,
           right: widget.hideSurroundingBorder! ? BorderSide.none : borderSide,
-          bottom: widget.hideSurroundingBorder! ? borderSide : BorderSide.none,
+          bottom: BorderSide.none,
         ),
       ),
       child: Column(
